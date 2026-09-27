@@ -184,6 +184,7 @@ class TicketsController {
                 user_id: req.userId
             }
         });
+        console.log(req.params.id);   
 
         if (!ticket) {
             return res.status(404).json({
