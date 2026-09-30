@@ -17,9 +17,9 @@ class Ticket extends Model {
             });
     }
     static associate(models) {
-        this.belongsTo(models.User, { foreignKey: "user_id" });
+        this.belongsTo(models.User, { foreignKey: "user_id", as: "user" });
         this.belongsTo(models.Category, { foreignKey: "category_id" });
-        this.belongsTo(models.User, {foreignKey: "analyst_id"});
+        this.belongsTo(models.User, {foreignKey: "analyst_id", as : "analyst"});
         this.hasMany(models.Comment);
     }
 }

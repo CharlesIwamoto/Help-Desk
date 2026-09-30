@@ -6,222 +6,241 @@ import { parseISO } from "date-fns";
 import Comment from "../models/Comment";
 
 class TicketsController {
+  async index(req, res) {
+    const {
+      title,
+      description,
+      status,
+      priority,
+      createdBefore,
+      createdAfter,
+      updatedBefore,
+      updatedAfter,
+      sort,
+    } = req.query;
 
-    async index(req, res) {
+    let where = {};
+    let order = [];
 
-        const {
-            title,
-            description,
-            status,
-            priority,
-            createdBefore,
-            createdAfter,
-            updatedBefore,
-            updatedAfter,
-            sort
-        } = req.query;
+    const limit = parseInt(req.query.limit || 25);
+    const page = parseInt(req.query.page || 1);
 
-        let where = {};
-        let order = [];
-
-        const limit = parseInt(req.query.limit || 25);
-        const page = parseInt(req.query.page || 1);
-
-        if (req.userProfile !== "ADMIN" && req.userProfile !== "ANALYST") {
-            where = {
-                ...where,
-                user_id: req.userId
-            };
-        }
-
-        if (req.userProfile === "ANALYST") {
-            where = {
-                ...where,
-                analyst_id: req.userId
-            };
-        }
-
-        if (title) {
-            where = {
-                ...where,
-                title: {
-                    [Op.iLike]: title
-                }
-            };
-        };
-
-        if (description) {
-            where = {
-                ...where,
-                description: {
-                    [Op.iLike]: description
-                }
-            };
-        };
-
-        if (status) {
-            where = {
-                ...where,
-                status: {
-                    [Op.iLike]: status
-                }
-            };
-        };
-
-        if (priority) {
-            where = {
-                ...where,
-                priority: {
-                    [Op.iLike]: priority
-                }
-            };
-        };
-
-        if (createdBefore) {
-            where = {
-                ...where,
-                created_at: {
-                    [Op.lte]: parseISO(createdBefore)
-                }
-            };
-        };
-
-        if (createdAfter) {
-            where = {
-                ...where,
-                created_at: {
-                    [Op.gte]: parseISO(createdAfter)
-                }
-            };
-        };
-
-        if (updatedBefore) {
-            where = {
-                ...where,
-                updated_at: {
-                    [Op.lte]: parseISO(updatedBefore)
-                }
-            };
-        };
-
-        if (updatedAfter) {
-            where = {
-                ...where,
-                updated_at: {
-                    [Op.gte]: parseISO(updatedAfter)
-                }
-            };
-        };
-
-        if (sort) {
-            order = sort.split(",").map(item => item.split(":"));
-        }
-
-
-        const tickets = await Ticket.findAll({
-            where,
-            order,
-            attributes: {
-                exclude: ["user_id", "category_id", "UserId", "CategoryId"]
-            },
-            include: [{
-                model: User,
-                attributes: ["name"]
-            },
-            {
-                model: Comment,
-                attributes: ["message", "createdAt"]
-            }
-            ],
-            limit,
-            offset: limit * page - limit
-        });
-
-        return res.json(tickets);
+    if (req.userProfile !== "ADMIN" && req.userProfile !== "ANALYST") {
+      where = {
+        ...where,
+        user_id: req.userId,
+      };
     }
 
-    async create(req, res) {
-        const schema = Yup.object().shape({
-            title: Yup.string().required(),
-            description: Yup.string().required(),
-            status: Yup.string().oneOf(["OPEN", "IN_PROGRESS", "WAITING FOR USER", "RESOLVED", "CLOSED"]).required("Status Invalido"),
-            priority: Yup.string().oneOf(["LOW", "AVERAGE", "HIGH", "CRITICISM"]).required(),
-            closing_date: Yup.date(),
-        });
+    if (req.userProfile === "ANALYST") {
+      where = {
+        ...where,
+        analyst_id: req.userId,
+      };
+    }
 
-        if (!(await schema.isValid(req.body))) {
-            return res.status(400).json({ error: "erro de validação" });
-        }
+    if (title) {
+      where = {
+        ...where,
+        title: {
+          [Op.iLike]: title,
+        },
+      };
+    }
 
-        const ticket = await Ticket.create({
-            ...req.body,
+    if (description) {
+      where = {
+        ...where,
+        description: {
+          [Op.iLike]: description,
+        },
+      };
+    }
+
+    if (status) {
+      where = {
+        ...where,
+        status: {
+          [Op.iLike]: status,
+        },
+      };
+    }
+
+    if (priority) {
+      where = {
+        ...where,
+        priority: {
+          [Op.iLike]: priority,
+        },
+      };
+    }
+
+    if (createdBefore) {
+      where = {
+        ...where,
+        created_at: {
+          [Op.lte]: parseISO(createdBefore),
+        },
+      };
+    }
+
+    if (createdAfter) {
+      where = {
+        ...where,
+        created_at: {
+          [Op.gte]: parseISO(createdAfter),
+        },
+      };
+    }
+
+    if (updatedBefore) {
+      where = {
+        ...where,
+        updated_at: {
+          [Op.lte]: parseISO(updatedBefore),
+        },
+      };
+    }
+
+    if (updatedAfter) {
+      where = {
+        ...where,
+        updated_at: {
+          [Op.gte]: parseISO(updatedAfter),
+        },
+      };
+    }
+
+    if (sort) {
+      order = sort.split(",").map((item) => item.split(":"));
+    }
+
+    const tickets = await Ticket.findAll({
+      where,
+      order,
+      attributes: {
+        exclude: ["user_id", "category_id", "UserId", "CategoryId"],
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["name"],
+        },
+        {
+          model: Comment,
+          attributes: ["message", "createdAt"],
+        },
+      ],
+      limit,
+      offset: limit * page - limit,
+    });
+
+    return res.json(tickets);
+  }
+
+  async create(req, res) {
+    const schema = Yup.object().shape({
+      title: Yup.string().required(),
+      description: Yup.string().required(),
+      status: Yup.string()
+        .oneOf([
+          "OPEN",
+          "IN_PROGRESS",
+          "WAITING FOR USER",
+          "RESOLVED",
+          "CLOSED",
+        ])
+        .required("Status Invalido"),
+      priority: Yup.string()
+        .oneOf(["LOW", "AVERAGE", "HIGH", "CRITICISM"])
+        .required(),
+      closing_date: Yup.date(),
+    });
+
+    if (!(await schema.isValid(req.body))) {
+      return res.status(400).json({ error: "erro de validação" });
+    }
+
+    const ticket = await Ticket.create({
+      ...req.body,
+      user_id: req.userId,
+      category_id: req.body.category_id,
+    });
+
+    return res.status(201).json(ticket);
+  }
+
+  async update(req, res) {
+    const schema = Yup.object().shape({
+      title: Yup.string(),
+      description: Yup.string().strict(),
+      status: Yup.string().oneOf([
+        "OPEN",
+        "IN_PROGRESS",
+        "WAITING FOR USER",
+        "RESOLVED",
+        "CLOSED",
+      ]),
+      priority: Yup.string().oneOf(["LOW", "AVERAGE", "HIGH", "CRITICISM"]),
+      closing_date: Yup.date(),
+    });
+
+    if (!(await schema.isValid(req.body))) {
+      return res.status(400).json({ error: "erro de validação" });
+    }
+
+    let where = {};
+
+    if (req.userProfile !== "ADMIN" && req.userProfile !== "ANALYST") {
+        where = {
             user_id: req.userId,
-            category_id: req.body.category_id,
-        });
-        //encontra que envia a req
-        const user = await User.findByPk(req.userId);
-        console.log(user);
-
-        return res.status(201).json(ticket);
+        };
     }
 
-    async update(req, res) {
-        const schema = Yup.object().shape({
-            title: Yup.string(),
-            description: Yup.string().strict(),
-            status: Yup.string().oneOf(["OPEN", "IN_PROGRESS", "WAITING FOR USER", "RESOLVED", "CLOSED"]),
-            priority: Yup.string().oneOf(["LOW", "AVERAGE", "HIGH", "CRITICISM"]),
-            closing_date: Yup.date(),
-        });
+    const ticket = await Ticket.findOne({
+      where: {
+        ...where,
+        id: req.params.id,
+      },
+    });
 
-        if (!(await schema.isValid(req.body))) {
-            return res.status(400).json({ error: "erro de validação" });
-        }
-
-        const ticket = await Ticket.findOne({
-            where: {
-                id: req.params.id,
-                user_id: req.userId
-            }
-        });
-        console.log(req.params.id);   
-
-        if (!ticket) {
-            return res.status(404).json({
-                success: false,
-                code: 404,
-                message: "Ticket não encontrado"
-            });
-        }
-
-        await ticket.update(req.body);
-
-        return res.status(200).json({
-            success: true,
-            message: "Ticket atualizado com sucesso"
-        });
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: "Ticket não encontrado",
+      });
     }
 
-    async destroy(req, res) {
-        const ticket = await Ticket.findOne({
-            where: {
-                id: req.params.id,
-                user_id: req.userId
-            }
-        });
+    await ticket.update(req.body);
 
-        if (!ticket) {
-            return res.status(404).json({
-                success: false,
-                code: 404,
-                message: "Ticket não encontrado"
-            });
-        }
+    return res.status(200).json({
+      success: true,
+      message: "Ticket atualizado com sucesso",
+    });
+  }
 
-        await ticket.destroy();
+  async destroy(req, res) {
+    const ticket = await Ticket.findOne({
+      where: {
+        id: req.params.id,
+        user_id: req.userId,
+      },
+    });
 
-        return res.status(200).json();
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: "Ticket não encontrado",
+      });
     }
+
+    await ticket.destroy();
+
+    return res.status(200).json();
+  }
 }
 
 export default new TicketsController();
